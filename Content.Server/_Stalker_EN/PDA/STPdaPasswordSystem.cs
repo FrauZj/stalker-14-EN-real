@@ -24,7 +24,7 @@ public sealed class STPdaPasswordSystem : SharedSTPdaPasswordSystem
     [Dependency] private readonly SharedPopupSystem _popup = default!;
 
     /// <summary>Maximum password length to prevent abuse.</summary>
-    private const int MaxPasswordLength = 32;
+    private const int MaxPasswordLength = 16;
 
     public override void Initialize()
     {
