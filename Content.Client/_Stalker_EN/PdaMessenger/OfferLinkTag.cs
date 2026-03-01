@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using Content.Client.UserInterface.ControlExtensions;
-using Content.Shared._Stalker_EN.MercBoard;
 using Robust.Client.UserInterface;
 using Robust.Client.UserInterface.Controls;
 using Robust.Client.UserInterface.RichText;
@@ -11,11 +10,15 @@ namespace Content.Client._Stalker_EN.PdaMessenger;
 
 /// <summary>
 /// Markup tag handler for clickable offer references in messenger messages.
-/// Renders <c>[offerlink=3][/offerlink]</c> as a blue clickable "[MB#3]" label.
+/// Renders <c>[offerlink=3 prefix=MB#][/offerlink]</c> as a blue clickable "[MB#3]" label.
+/// Supports any board prefix (MB#, TB#, etc.).
 /// Click handling is delegated to the nearest parent implementing <see cref="IOfferLinkClickHandler"/>.
 /// </summary>
 public sealed class OfferLinkTag : IMarkupTagHandler
 {
+    /// <summary>Fallback prefix used when no prefix attribute is present (backwards compatibility).</summary>
+    private const string FallbackPrefix = "MB#";
+
     public string Name => "offerlink";
 
     public bool TryCreateControl(MarkupNode node, [NotNullWhen(true)] out Control? control)
@@ -27,9 +30,18 @@ public sealed class OfferLinkTag : IMarkupTagHandler
         }
 
         var id = (uint) longId;
+
+        // Read prefix from attributes, default to fallback for backwards compatibility
+        var prefix = FallbackPrefix;
+        if (node.Attributes.TryGetValue("prefix", out var prefixValue)
+            && prefixValue.TryGetString(out var prefixStr))
+        {
+            prefix = prefixStr;
+        }
+
         var label = new Label
         {
-            Text = $"[{STMercBoardOffer.OfferRefPrefix}{id}]",
+            Text = $"[{prefix}{id}]",
             MouseFilter = Control.MouseFilterMode.Stop,
             FontColorOverride = Color.CornflowerBlue,
             DefaultCursorShape = Control.CursorShape.Hand,
