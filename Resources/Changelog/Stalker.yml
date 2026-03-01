@@ -942,5 +942,12 @@
   id: 106
   time: '2026-03-01T14:54:25.660209+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/555
+- author: Roland410
+  changes:
+  - message: Fix storage bugs and inconsistencies in cloaks and coveralls.
+    type: Fix
+  id: 107
+  time: '2026-03-01T14:57:21.421107+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/554
 Name: Stalker
 Order: -1
