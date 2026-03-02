@@ -1011,5 +1011,15 @@
   id: 110
   time: '2026-03-02T04:07:02.886148+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/560
+- author: teecoding
+  changes:
+  - message: Resolved several prototype loading errors (duplicate crate, missing tag,
+      missing textures, bad locale keys)
+    type: Fix
+  - message: Ghost no longer causes server crash when respawn fails to place a player
+    type: Fix
+  id: 111
+  time: '2026-03-02T14:10:08.348825+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/564
 Name: Stalker
 Order: -1
