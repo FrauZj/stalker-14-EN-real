@@ -283,7 +283,7 @@
     color: "#FF893B"
     castShadows: false
   - type: Explosive
-    explosionType: Default
+    explosionType: Radioactive
     maxIntensity: 3
     intensitySlope: 5
     totalIntensity: 50

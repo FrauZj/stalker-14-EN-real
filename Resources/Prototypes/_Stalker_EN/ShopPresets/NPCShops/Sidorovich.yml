@@ -51,7 +51,7 @@
 
     # Acidic group - 1
     ZoneArtifactToxic: 490
-    ZoneArtifactCytoplasm: 490
+    ZoneArtifactCytoplasm: 1215
     ZoneArtifactBlood: 1215
     ZoneArtifactMeat: 2430
     ZoneArtifactKolobok: 3645

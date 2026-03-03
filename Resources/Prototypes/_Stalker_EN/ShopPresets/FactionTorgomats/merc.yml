@@ -50,7 +50,7 @@
     ZoneArtifactArf: 1900
     # Acidic group - 1
     ZoneArtifactToxic: 450
-    ZoneArtifactCytoplasm: 450
+    ZoneArtifactCytoplasm: 1200
     ZoneArtifactBlood: 1200
     ZoneArtifactMeat: 2400
     ZoneArtifactKolobok: 3600
