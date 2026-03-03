@@ -69,7 +69,7 @@
     MutantPartOldBoarHoof: 385 # T3
 
     #Bears ---------
-    MutantPartBearClaw: 200
+    MutantPartBearClaw: 245
     MutantPartBearPaw: 390
     MutantPartBearEye: 590
     ClothingHeadBear: 700
@@ -95,6 +95,8 @@
     ClothingMaskChimera: 1
     MutantPartChimeraTooth: 1
     MutantPartIzlomArm: 715
+    MutantPartBurerBrain: 1500
+    MutantPartControllerBrain: 2625
 
     # Meat
     FoodMeatDogCooked: 70
