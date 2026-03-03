@@ -1070,5 +1070,13 @@
   id: 115
   time: '2026-03-03T23:39:30.886857+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/565
+- author: teecoding
+  changes:
+  - message: only Clear Sky is disguised as Loners on PDA; Monolith, Military, Project,
+      and SSU now show their real faction patch
+    type: Fix
+  id: 116
+  time: '2026-03-03T23:44:55.177598+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/572
 Name: Stalker
 Order: -1
