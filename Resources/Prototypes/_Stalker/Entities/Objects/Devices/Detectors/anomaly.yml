@@ -16,10 +16,16 @@
     - type: Appearance
     - type: GenericVisualizer
       visuals:
-        enum.ZoneAnomalyDetectorVisuals.Enabled:
+        enum.STZoneAnomalyDetectorProximityVisuals.Level: # stalker-changes-en
           enum.ZoneAnomalyDetectorVisuals.Layer:
-            True: { state: screen_on }
-            False: { state: screen_off }
+            0: { state: screen_off }
+            1: { state: screen_on }
+            2: { state: screen_on }
+            3: { state: screen_on }
+            4: { state: screen_on }
+            5: { state: screen_on }
+    - type: STZoneAnomalyDetectorProximityIndicator # stalker-changes-en
+      proximityStates: 2
     - type: ZoneAnomalyDetector
       level: 0
       distance: 5
@@ -48,6 +54,8 @@
       minBeepInterval: 0.5
       level: 0
       distance: 7
+    - type: STZoneAnomalyDetectorProximityIndicator # stalker-changes-en
+      proximityStates: 2
     - type: Craftable
 
 - type: entity
@@ -93,6 +101,8 @@
       maxBeepInterval: 2.5
       minBeepInterval: 0.5
       distance: 7
+    - type: STZoneAnomalyDetectorProximityIndicator # stalker-changes-en
+      proximityStates: 2
     - type: Craftable
 
 - type: entity
@@ -139,6 +149,8 @@
       distance: 5
       maxBeepInterval: 1
       minBeepInterval: 0.2
+    - type: STZoneAnomalyDetectorProximityIndicator # stalker-changes-en
+      proximityStates: 4
 
 #- type: entity
 #  parent: ZoneAnomalyBaseDetector
@@ -182,6 +194,10 @@
       distance: 5
       maxBeepInterval: 1
       minBeepInterval: 0.01
+    - type: STZoneAnomalyDetectorProximityIndicator # stalker-changes-en
+      proximityStates: 4
+    - type: STZoneAnomalyDetectorDirectionIndicator # stalker-changes-en
+      centerDistance: 1.0
     - type: ZoneAnomalyDetectorArtifactActivator
       level: 3
 
@@ -206,6 +222,10 @@
       distance: 5
       maxBeepInterval: 1
       minBeepInterval: 0.01
+    - type: STZoneAnomalyDetectorProximityIndicator # stalker-changes-en
+      proximityStates: 4
+    - type: STZoneAnomalyDetectorDirectionIndicator # stalker-changes-en
+      centerDistance: 1.0
     - type: ZoneAnomalyActivator
       # level: 4 # Stalker-TODO: These fields do not exist in this component!
       # distance: 10
@@ -235,4 +255,8 @@
       distance: 5
       maxBeepInterval: 0.9
       minBeepInterval: 0.01
+    - type: STZoneAnomalyDetectorProximityIndicator # stalker-changes-en
+      proximityStates: 4
+    - type: STZoneAnomalyDetectorDirectionIndicator # stalker-changes-en
+      centerDistance: 1.0
 
