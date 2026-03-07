@@ -1,5 +1,5 @@
 game-ticker-get-info-text-stalker = Hi and welcome to [color=white]Stalker14![/color]
-                            The it's currently week [color=white]#{$roundId}[/color]
+                            It's currently week [color=white]#{$roundId}[/color]
                             The current player count is: [color=white]{$playerCount}[/color]
                             The current map is: [color=white]{$mapName}[/color]
                             The current game mode is: [color=white]{$gmTitle}[/color]
