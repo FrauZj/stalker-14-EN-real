@@ -11,7 +11,9 @@ using Content.Shared.CartridgeLoader;
 using Content.Shared.Database;
 using Content.Shared.GameTicking;
 using Content.Shared.PDA.Ringer;
+using Content.Shared._Stalker.Bands;
 using Content.Shared._Stalker_EN.CCVar;
+using Content.Shared._Stalker_EN.FactionRelations;
 using Content.Shared._Stalker_EN.News;
 using Robust.Shared.Configuration;
 using Robust.Shared.Prototypes;
@@ -22,7 +24,7 @@ namespace Content.Server._Stalker_EN.News;
 
 /// <summary>
 /// Server system for the Stalker News PDA cartridge program.
-/// Manages article publishing, database persistence, Discord webhook, and broadcast updates.
+/// Manages article publishing, deletion, comments, database persistence, Discord webhook, and broadcast updates.
 /// </summary>
 public sealed class STNewsSystem : EntitySystem
 {
@@ -33,13 +35,19 @@ public sealed class STNewsSystem : EntitySystem
     [Dependency] private readonly IAdminLogManager _adminLogger = default!;
     [Dependency] private readonly IConfigurationManager _config = default!;
     [Dependency] private readonly IServerDbManager _dbManager = default!;
+    [Dependency] private readonly IPrototypeManager _protoManager = default!;
     [Dependency] private readonly RingerSystem _ringer = default!;
+    [Dependency] private readonly SharedSTFactionResolutionSystem _factionResolution = default!;
     [Dependency] private readonly IGameTiming _timing = default!;
 
     private static readonly ProtoId<AccessLevelPrototype> JournalistAccess = "Journalist";
+    private static readonly ProtoId<STBandPrototype> ClearSkyBandId = "STClearSkyBand";
 
     /// <summary>In-memory article cache, newest first.</summary>
     private readonly List<STNewsArticle> _articles = new();
+
+    /// <summary>In-memory comment cache, keyed by article ID, chronological order.</summary>
+    private readonly Dictionary<int, List<STNewsComment>> _comments = new();
 
     /// <summary>Loaders (PDAs) with the news cartridge currently active.</summary>
     private readonly HashSet<EntityUid> _activeLoaders = new();
@@ -47,7 +55,7 @@ public sealed class STNewsSystem : EntitySystem
     /// <summary>All known news cartridge loader UIDs, for sending notifications without a global query.</summary>
     private readonly HashSet<EntityUid> _allLoaders = new();
 
-    /// <summary>Cached summary list, invalidated on publish. Avoids re-running regex strip on every UI open.</summary>
+    /// <summary>Cached summary list, invalidated on publish/delete/comment. Avoids re-running regex strip on every UI open.</summary>
     private List<STNewsArticleSummary>? _cachedSummaries;
 
     private WebhookIdentifier? _webhookId;
@@ -109,6 +117,35 @@ public sealed class STNewsSystem : EntitySystem
                     dbArticle.EmbedColor));
             }
 
+            // Load comments for all cached articles
+            if (_articles.Count > 0)
+            {
+                var articleIds = new List<int>(_articles.Count);
+                foreach (var a in _articles)
+                    articleIds.Add(a.Id);
+                var dbComments = await _dbManager.GetStalkerNewsCommentsAsync(articleIds);
+
+                foreach (var dbComment in dbComments)
+                {
+                    var comment = new STNewsComment(
+                        dbComment.Id,
+                        dbComment.ArticleId,
+                        dbComment.Author,
+                        dbComment.Content,
+                        dbComment.RoundId,
+                        TimeSpan.FromTicks(dbComment.PostedTimeTicks),
+                        dbComment.AuthorFaction);
+
+                    if (!_comments.TryGetValue(dbComment.ArticleId, out var list))
+                    {
+                        list = new List<STNewsComment>();
+                        _comments[dbComment.ArticleId] = list;
+                    }
+
+                    list.Add(comment);
+                }
+            }
+
             _cachedSummaries = null;
         }
         catch (Exception e)
@@ -133,11 +170,19 @@ public sealed class STNewsSystem : EntitySystem
         // Compute new article IDs BEFORE updating LastSeenArticleId so the first view shows them
         var newIds = GetNewArticleIds(comp);
 
-        // Update LastSeenArticleId to newest article
         if (_articles.Count > 0)
             comp.LastSeenArticleId = _articles[0].Id;
 
-        // Clear notification badge
+        // Initialize comment counts so existing comments don't show as "NEW" on first open
+        if (comp.LastSeenCommentCounts.Count == 0)
+        {
+            foreach (var article in _articles)
+            {
+                if (_comments.TryGetValue(article.Id, out var list) && list.Count > 0)
+                    comp.LastSeenCommentCounts[article.Id] = list.Count;
+            }
+        }
+
         if (TryComp<CartridgeComponent>(uid, out var cartComp) && cartComp.HasNotification)
         {
             cartComp.HasNotification = false;
@@ -146,18 +191,34 @@ public sealed class STNewsSystem : EntitySystem
 
         int? openArticleId = null;
         STNewsArticle? openArticle = null;
+        var canDelete = false;
+        List<STNewsComment>? comments = null;
 
         // Consume pending article navigation
         if (comp.PendingArticleId is { } pendingId)
         {
             comp.PendingArticleId = null;
+            comp.ViewingArticleId = pendingId;
             openArticleId = pendingId;
             openArticle = FindArticleById(pendingId);
+
+            if (openArticle != null)
+            {
+                canDelete = CanDeleteArticleForLoader(openArticle, args.Loader);
+                _comments.TryGetValue(pendingId, out var rawComments);
+                comments = rawComments != null ? new List<STNewsComment>(rawComments) : null;
+
+                var commentCount = rawComments?.Count ?? 0;
+                comp.LastSeenCommentCounts[pendingId] = commentCount;
+            }
         }
 
         var canWrite = HasJournalistAccessForLoader(args.Loader);
+        var deletableIds = GetDeletableArticleIdsForLoader(args.Loader);
+        var newCommentIds = GetNewCommentArticleIds(comp);
         var state = new STNewsUiState(
-            GetCachedSummaries(), canWrite, openArticleId, openArticle, newIds);
+            GetCachedSummaries(), canWrite, openArticleId, openArticle, newIds,
+            canDelete, comments, deletableIds, newCommentIds);
         _cartridgeLoader.UpdateCartridgeUiState(args.Loader, state);
     }
 
@@ -217,6 +278,15 @@ public sealed class STNewsSystem : EntitySystem
             case STNewsRequestArticleEvent request:
                 OnRequestArticle(comp, request, args);
                 break;
+            case STNewsDeleteArticleEvent delete:
+                OnDelete(delete, args);
+                break;
+            case STNewsPostCommentEvent comment:
+                OnPostComment(comment, args);
+                break;
+            case STNewsCloseArticleEvent:
+                OnCloseArticle(uid, comp);
+                break;
         }
     }
 
@@ -250,7 +320,7 @@ public sealed class STNewsSystem : EntitySystem
         var author = MetaData(args.Actor).EntityName;
 
         _adminLogger.Add(
-            LogType.Action,
+            LogType.STNews,
             LogImpact.Low,
             $"{ToPrettyString(args.Actor):player} published news article: \"{title}\"");
 
@@ -262,14 +332,108 @@ public sealed class STNewsSystem : EntitySystem
         STNewsRequestArticleEvent request,
         CartridgeMessageEvent args)
     {
+        comp.ViewingArticleId = request.ArticleId;
+
         var article = FindArticleById(request.ArticleId);
         var canWrite = HasJournalistAccess(args.Actor);
         var loaderUid = GetEntity(args.LoaderUid);
         var newIds = GetNewArticleIds(comp);
 
+        var canDelete = false;
+        List<STNewsComment>? comments = null;
+
+        if (article != null)
+        {
+            canDelete = CanDeleteArticle(article, args.Actor);
+            _comments.TryGetValue(request.ArticleId, out var rawComments);
+            comments = rawComments != null ? new List<STNewsComment>(rawComments) : null;
+
+            var commentCount = rawComments?.Count ?? 0;
+            comp.LastSeenCommentCounts[request.ArticleId] = commentCount;
+        }
+
+        var deletableIds = GetDeletableArticleIds(args.Actor);
+        var newCommentIds = GetNewCommentArticleIds(comp);
         var state = new STNewsUiState(
-            GetCachedSummaries(), canWrite, request.ArticleId, article, newIds);
+            GetCachedSummaries(), canWrite, request.ArticleId, article, newIds,
+            canDelete, comments, deletableIds, newCommentIds);
         _cartridgeLoader.UpdateCartridgeUiState(loaderUid, state);
+    }
+
+    private void OnDelete(STNewsDeleteArticleEvent delete, CartridgeMessageEvent args)
+    {
+        if (!HasJournalistAccess(args.Actor))
+            return;
+
+        var article = FindArticleById(delete.ArticleId);
+        if (article == null)
+            return;
+
+        // Only allow deletion of own articles from the current round
+        if (article.RoundId != _gameTicker.RoundId)
+            return;
+
+        var actorName = MetaData(args.Actor).EntityName;
+        if (article.Author != actorName)
+            return;
+
+        for (var i = 0; i < _articles.Count; i++)
+        {
+            if (_articles[i].Id == delete.ArticleId)
+            {
+                _articles.RemoveAt(i);
+                break;
+            }
+        }
+        _comments.Remove(delete.ArticleId);
+        _cachedSummaries = null;
+
+        _adminLogger.Add(
+            LogType.STNews,
+            LogImpact.Medium,
+            $"{ToPrettyString(args.Actor):player} deleted news article #{delete.ArticleId}: \"{article.Title}\"");
+
+        DeleteArticleAsync(delete.ArticleId);
+
+        BroadcastUiUpdate();
+    }
+
+    private void OnPostComment(STNewsPostCommentEvent comment, CartridgeMessageEvent args)
+    {
+        var article = FindArticleById(comment.ArticleId);
+        if (article == null)
+            return;
+
+        var loaderUid = GetEntity(args.LoaderUid);
+        if (!_cartridgeLoader.TryGetProgram<STNewsCartridgeComponent>(loaderUid, out _, out var newsComp))
+            return;
+
+        var content = comment.Content.Trim();
+        if (string.IsNullOrEmpty(content))
+            return;
+
+        if (content.Length > STNewsConstants.MaxCommentLength)
+            content = content[..STNewsConstants.MaxCommentLength];
+
+        var maxComments = _config.GetCVar(STCCVars.NewsMaxCommentsPerArticle);
+        if (_comments.TryGetValue(comment.ArticleId, out var existing) && existing.Count >= maxComments)
+            return;
+
+        var cooldownSeconds = _config.GetCVar(STCCVars.NewsCommentCooldownSeconds);
+        if (_timing.CurTime < newsComp.NextCommentTime)
+            return;
+
+        newsComp.NextCommentTime = _timing.CurTime + TimeSpan.FromSeconds(cooldownSeconds);
+
+        var author = MetaData(args.Actor).EntityName;
+        var faction = ResolveFaction(args.Actor);
+
+        _adminLogger.Add(
+            LogType.STNews,
+            LogImpact.Low,
+            $"{ToPrettyString(args.Actor):player} commented on news article #{comment.ArticleId}");
+
+        PostCommentAsync(comment.ArticleId, author, content, faction);
     }
 
     #endregion
@@ -284,6 +448,11 @@ public sealed class STNewsSystem : EntitySystem
         args.Handled = true;
         comp.PendingArticleId = args.ArticleId;
         _cartridgeLoader.ActivateProgram(args.LoaderUid, uid);
+    }
+
+    private void OnCloseArticle(EntityUid uid, STNewsCartridgeComponent comp)
+    {
+        comp.ViewingArticleId = null;
     }
 
     #endregion
@@ -310,7 +479,32 @@ public sealed class STNewsSystem : EntitySystem
 
             var canWrite = HasJournalistAccessForLoader(loaderUid);
             var newIds = GetNewArticleIds(newsComp);
-            var state = new STNewsUiState(summaries, canWrite, newArticleIds: newIds);
+
+            int? openArticleId = null;
+            STNewsArticle? openArticle = null;
+            var canDelete = false;
+            List<STNewsComment>? openComments = null;
+
+            if (newsComp.ViewingArticleId is { } viewingId)
+            {
+                openArticle = FindArticleById(viewingId);
+                if (openArticle != null)
+                {
+                    openArticleId = viewingId;
+                    canDelete = CanDeleteArticleForLoader(openArticle, loaderUid);
+                    _comments.TryGetValue(viewingId, out var rawComments);
+                    openComments = rawComments != null ? new List<STNewsComment>(rawComments) : null;
+
+                    var commentCount = rawComments?.Count ?? 0;
+                    newsComp.LastSeenCommentCounts[viewingId] = commentCount;
+                }
+            }
+
+            var deletableIds = GetDeletableArticleIdsForLoader(loaderUid);
+            var newCommentIds = GetNewCommentArticleIds(newsComp);
+            var state = new STNewsUiState(
+                summaries, canWrite, openArticleId, openArticle, newIds,
+                canDelete, openComments, deletableIds, newCommentIds);
             _cartridgeLoader.UpdateCartridgeUiState(loaderUid, state);
         }
     }
@@ -388,6 +582,62 @@ public sealed class STNewsSystem : EntitySystem
         }
     }
 
+    private async void DeleteArticleAsync(int articleId)
+    {
+        try
+        {
+            await _dbManager.DeleteStalkerNewsArticleAsync(articleId);
+        }
+        catch (Exception e)
+        {
+            Log.Error($"Failed to delete news article #{articleId} from database: {e}");
+        }
+    }
+
+    private async void PostCommentAsync(int articleId, string author, string content, string? faction)
+    {
+        try
+        {
+            var dbComment = new StalkerNewsComment
+            {
+                ArticleId = articleId,
+                Author = author,
+                Content = content,
+                RoundId = _gameTicker.RoundId,
+                PostedTimeTicks = _gameTicker.RoundDuration().Ticks,
+                CreatedAt = DateTime.UtcNow,
+                AuthorFaction = faction,
+            };
+
+            var dbId = await _dbManager.AddStalkerNewsCommentAsync(dbComment);
+
+            var comment = new STNewsComment(
+                dbId,
+                articleId,
+                author,
+                content,
+                dbComment.RoundId,
+                TimeSpan.FromTicks(dbComment.PostedTimeTicks),
+                faction);
+
+            if (!_comments.TryGetValue(articleId, out var list))
+            {
+                list = new List<STNewsComment>();
+                _comments[articleId] = list;
+            }
+
+            list.Add(comment);
+            _cachedSummaries = null; // Comment count changed
+
+            // Broadcast updates all active viewers, including those viewing this article
+            BroadcastUiUpdate();
+        }
+        catch (Exception e)
+        {
+            Log.Error($"Failed to post comment on news article #{articleId}: {e}");
+        }
+    }
+
     #endregion
 
     #region Discord
@@ -445,7 +695,38 @@ public sealed class STNewsSystem : EntitySystem
     }
 
     /// <summary>
-    /// Returns the cached summary list, rebuilding it only when invalidated (on publish).
+    /// Checks whether the given actor can delete the given article.
+    /// Must be journalist, same author name, and current round.
+    /// </summary>
+    private bool CanDeleteArticle(STNewsArticle article, EntityUid actor)
+    {
+        if (!HasJournalistAccess(actor))
+            return false;
+
+        if (article.RoundId != _gameTicker.RoundId)
+            return false;
+
+        var actorName = MetaData(actor).EntityName;
+        return article.Author == actorName;
+    }
+
+    /// <summary>
+    /// Checks whether the holder of a loader (PDA) can delete the given article.
+    /// </summary>
+    private bool CanDeleteArticleForLoader(STNewsArticle article, EntityUid loaderUid)
+    {
+        if (!TryComp<TransformComponent>(loaderUid, out var xform))
+            return false;
+
+        var holder = xform.ParentUid;
+        if (!holder.IsValid())
+            return false;
+
+        return CanDeleteArticle(article, holder);
+    }
+
+    /// <summary>
+    /// Returns the cached summary list, rebuilding it only when invalidated.
     /// </summary>
     private List<STNewsArticleSummary> GetCachedSummaries()
     {
@@ -455,6 +736,7 @@ public sealed class STNewsSystem : EntitySystem
         var summaries = new List<STNewsArticleSummary>(_articles.Count);
         foreach (var article in _articles)
         {
+            var commentCount = _comments.TryGetValue(article.Id, out var comments) ? comments.Count : 0;
             summaries.Add(new STNewsArticleSummary(
                 article.Id,
                 article.Title,
@@ -462,7 +744,8 @@ public sealed class STNewsSystem : EntitySystem
                 article.Author,
                 article.RoundId,
                 article.PublishTime,
-                article.EmbedColor));
+                article.EmbedColor,
+                commentCount));
         }
 
         _cachedSummaries = summaries;
@@ -494,12 +777,78 @@ public sealed class STNewsSystem : EntitySystem
         return ids;
     }
 
+    private HashSet<int> GetDeletableArticleIds(EntityUid actor)
+    {
+        if (!HasJournalistAccess(actor))
+            return new HashSet<int>();
+
+        var actorName = MetaData(actor).EntityName;
+        var ids = new HashSet<int>();
+        foreach (var article in _articles)
+        {
+            if (article.RoundId == _gameTicker.RoundId && article.Author == actorName)
+                ids.Add(article.Id);
+        }
+
+        return ids;
+    }
+
+    private HashSet<int> GetDeletableArticleIdsForLoader(EntityUid loaderUid)
+    {
+        if (!TryComp<TransformComponent>(loaderUid, out var xform))
+            return new HashSet<int>();
+
+        var holder = xform.ParentUid;
+        if (!holder.IsValid())
+            return new HashSet<int>();
+
+        return GetDeletableArticleIds(holder);
+    }
+
+    private HashSet<int> GetNewCommentArticleIds(STNewsCartridgeComponent comp)
+    {
+        var ids = new HashSet<int>();
+        foreach (var article in _articles)
+        {
+            var currentCount = _comments.TryGetValue(article.Id, out var list) ? list.Count : 0;
+            if (currentCount == 0)
+                continue;
+
+            comp.LastSeenCommentCounts.TryGetValue(article.Id, out var lastSeen);
+            if (currentCount > lastSeen)
+                ids.Add(article.Id);
+        }
+
+        return ids;
+    }
+
     private static string StripAndTruncate(string content, int maxLength)
     {
         var stripped = MarkupTagRegex.Replace(content, string.Empty);
         if (stripped.Length > maxLength)
             stripped = stripped[..maxLength] + "...";
         return stripped;
+    }
+
+    /// <summary>
+    /// Resolves the faction name for an entity via BandsComponent.
+    /// </summary>
+    private string? ResolveFaction(EntityUid uid)
+    {
+        if (!TryComp<BandsComponent>(uid, out var bands))
+            return null;
+
+        // Only Clear Sky is disguised as Loners on PDA
+        if (bands.BandProto == ClearSkyBandId)
+            return _factionResolution.GetBandFactionName(bands.BandName);
+
+        if (bands.BandProto is not { } bandProtoId)
+            return null;
+
+        if (!_protoManager.TryIndex(bandProtoId, out var bandProto))
+            return null;
+
+        return _factionResolution.GetBandFactionName(bandProto.Name);
     }
 
     #endregion
