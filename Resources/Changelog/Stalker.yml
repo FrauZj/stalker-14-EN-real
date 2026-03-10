@@ -1275,5 +1275,17 @@
   id: 138
   time: '2026-03-10T01:44:53.276459+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/603
+- author: Roland410
+  changes:
+  - message: Changes some localization on crafting materials to be more consistent.
+    type: Tweak
+  - message: Makes gunpowder and such be materials.
+    type: Tweak
+  - message: Makes protective cases and artifact containers actually protect from
+      explosions as intended.
+    type: Fix
+  id: 139
+  time: '2026-03-10T01:47:36.097548+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/606
 Name: Stalker
 Order: -1
