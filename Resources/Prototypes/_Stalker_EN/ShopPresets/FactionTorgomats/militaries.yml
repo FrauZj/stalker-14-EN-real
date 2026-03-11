@@ -212,7 +212,7 @@
       HandheldGPSBasic: 50
       Paper: 2
       Pen: 5
-      Binocularus1: 2500
+      Binocularus1: 1000
       BoxFlare: 60
       ClothingBackpackDuffelGreenStalkerHydroponic: 500
       Beaker: 40
@@ -532,7 +532,7 @@
       Paper: 2
       Pen: 5
       BoxFolderClipboardEmpty: 20 # Clipboard
-      Binocularus1: 2500
+      Binocularus1: 1000
       BoxFlare: 60
       ClothingBackpackDuffelGreenStalkerHydroponic: 500
       Beaker: 40
