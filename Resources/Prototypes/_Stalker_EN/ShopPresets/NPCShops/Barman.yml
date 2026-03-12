@@ -95,7 +95,7 @@
     MutantPartChimeraTooth: 1
     MutantPartIzlomArm: 1650
     MutantPartBurerBrain: 2000
-    MutantPartControllerBrain: 3000
+    MutantPartControllerBrain: 3500
 
     # Meat
     STFoodMeatSalo: 95
