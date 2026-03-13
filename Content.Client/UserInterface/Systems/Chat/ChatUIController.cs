@@ -39,6 +39,7 @@ using Robust.Shared.Network;
 using Robust.Shared.Prototypes;
 using Robust.Shared.Replays;
 using Robust.Shared.Timing;
+using Content.Client._Stalker_EN.CharacterRank; // stalker-changes
 using Robust.Shared.Utility;
 
 
@@ -468,6 +469,7 @@ public sealed partial class ChatUIController : UIController
         }
 
         existing.Add(bubble);
+        EntityManager.EnsureComponent<STSpeechBubbleActiveComponent>(entity); // stalker-changes
         _speechBubbleRoot.AddChild(bubble);
 
         if (existing.Count > SpeechBubbleCap)
@@ -509,6 +511,7 @@ public sealed partial class ChatUIController : UIController
         if (list.Count == 0)
         {
             _activeSpeechBubbles.Remove(entityUid);
+            EntityManager.RemoveComponentDeferred<STSpeechBubbleActiveComponent>(entityUid); // stalker-changes
         }
     }
 

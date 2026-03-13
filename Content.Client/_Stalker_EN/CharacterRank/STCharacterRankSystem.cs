@@ -22,6 +22,9 @@ public sealed class STCharacterRankSystem : EntitySystem
 
     private void OnGetStatusIcon(EntityUid uid, STCharacterRankComponent comp, ref GetStatusIconsEvent args)
     {
+        if (HasComp<STSpeechBubbleActiveComponent>(uid))
+            return;
+
         if (TryComp<ESViewconeOccludableComponent>(uid, out var occ) && occ.IsHidden)
             return;
 
