@@ -1503,5 +1503,12 @@
   id: 157
   time: '2026-03-13T22:42:44.954366+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/628
+- author: teecoding
+  changes:
+  - message: Your HUD theme preference no longer resets every time you join the server
+    type: Fix
+  id: 158
+  time: '2026-03-14T17:53:46.972095+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/633
 Name: Stalker
 Order: -1
