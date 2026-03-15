@@ -52,7 +52,7 @@
   description: A printed photograph.
   components:
   - type: Sprite
-    sprite: _Stalker_EN/Objects/Misc/photo.rsi
+    sprite: _Stalker_EN/Objects/Misc/misc.rsi
     state: photo
   - type: Item
     size: Tiny
