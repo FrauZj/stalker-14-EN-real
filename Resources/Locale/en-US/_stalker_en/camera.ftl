@@ -10,4 +10,5 @@ st-camera-examine-film = Film: {$charges} exposures remaining.
 
 ## Photo Viewer
 st-photo-loading = Loading...
+st-photo-unavailable = Photo unavailable.
 

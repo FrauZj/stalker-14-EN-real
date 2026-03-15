@@ -49,6 +49,7 @@ public sealed class STPhotoBoundUserInterface : BoundUserInterface
         {
             var netEntity = _entManager.GetNetEntity(Owner);
             _photoSystem.RequestPhoto(netEntity, photoState.PhotoId);
+            _window?.StartLoading();
         }
 
         // Show window after first state update
