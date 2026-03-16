@@ -463,6 +463,7 @@
     items:
       # ARMOR
       STClothingOuterArmorLightPlateVestBasePSZ7rene: 22
+      STLeadPlate: 5
   # - name: shop-category-storage-and-containers
   #   priority: 7
   #   items:
