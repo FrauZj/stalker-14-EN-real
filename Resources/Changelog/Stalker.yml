@@ -1553,5 +1553,14 @@
   id: 162
   time: '2026-03-15T20:43:52.181120+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/640
+- author: dallaszzz
+  changes:
+  - message: Fixes weather in the stash
+    type: Fix
+  - message: Enables weather on wood tiles without roofs
+    type: Tweak
+  id: 163
+  time: '2026-03-16T13:01:06.208270+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/643
 Name: Stalker
 Order: -1
