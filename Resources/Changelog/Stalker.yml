@@ -1562,5 +1562,14 @@
   id: 163
   time: '2026-03-16T13:01:06.208270+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/643
+- author: teecoding
+  changes:
+  - message: Buyback entries are now properly cleared when closing a shop or disconnecting
+    type: Fix
+  - message: Reduced memory allocations in the shop buyback system
+    type: Tweak
+  id: 164
+  time: '2026-03-17T11:00:28.306404+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/653
 Name: Stalker
 Order: -1
