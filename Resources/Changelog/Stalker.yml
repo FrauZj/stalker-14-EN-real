@@ -1579,5 +1579,12 @@
   id: 165
   time: '2026-03-17T11:03:47.617976+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/644
+- author: dallaszzz
+  changes:
+  - message: Groza can now take a scope and muzzle
+    type: Tweak
+  id: 166
+  time: '2026-03-17T19:06:41.005168+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/655
 Name: Stalker
 Order: -1
