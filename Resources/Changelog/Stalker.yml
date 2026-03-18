@@ -1623,5 +1623,14 @@
   id: 170
   time: '2026-03-18T07:49:40.055064+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/665
+- author: dallaszzz
+  changes:
+  - message: Voicelines to every faction
+    type: Add
+  - message: Grenade prime sfx was changed
+    type: Tweak
+  id: 171
+  time: '2026-03-18T08:03:45.951438+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/663
 Name: Stalker
 Order: -1
