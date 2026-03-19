@@ -13,5 +13,4 @@ public sealed partial class ItemCategory : PanelContainer
 
         CategoryLabel.Text = $"[bold][color=orange]{category.ToUpper()}[/color][/bold]";
     }
-
 }

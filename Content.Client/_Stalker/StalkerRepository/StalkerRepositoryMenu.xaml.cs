@@ -183,7 +183,7 @@ public sealed partial class StalkerRepositoryMenu : DefaultWindow
                 return;
 
             ItemContainer.AddChild(new ItemCategory(category.Key));
-            var containedItems = new GridContainer()
+            var containedItems = new GridContainer
             {
                 Columns = 2,
                 SizeFlagsStretchRatio = 3,
