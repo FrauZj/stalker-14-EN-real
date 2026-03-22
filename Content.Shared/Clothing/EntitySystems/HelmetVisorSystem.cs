@@ -1,7 +1,9 @@
 using Content.Shared.Actions;
 using Content.Shared.Armor;
+using Content.Shared.Atmos.Piping.Unary.Components;
 using Content.Shared.Clothing.Components;
 using Content.Shared.Damage;
+using Content.Shared.Examine;
 using Content.Shared.IdentityManagement;
 using Content.Shared.IdentityManagement.Components;
 using Content.Shared.Inventory;
@@ -23,6 +25,7 @@ public sealed class HelmetVisorSystem : EntitySystem
     [Dependency] private readonly ClothingSystem _clothing = default!;
     [Dependency] private readonly IdentitySystem _identity = default!;
     [Dependency] private readonly SharedAudioSystem _audio = default!;
+    [Dependency] private readonly ExamineSystemShared _examine = default!;
 
     public override void Initialize()
     {
@@ -30,6 +33,7 @@ public sealed class HelmetVisorSystem : EntitySystem
         SubscribeLocalEvent<HelmetVisorComponent, ComponentInit>(OnInit);
         SubscribeLocalEvent<HelmetVisorComponent, ToggleHelmetVisorEvent>(OnToggle);
         SubscribeLocalEvent<HelmetVisorComponent, GetItemActionsEvent>(OnGetActions);
+        SubscribeLocalEvent<HelmetVisorComponent, ExaminedEvent>(OnExamine);
     }
 
     private void OnInit(EntityUid uid, HelmetVisorComponent comp, ComponentInit args)
@@ -60,6 +64,13 @@ public sealed class HelmetVisorSystem : EntitySystem
         if (args.Handled || !comp.IsToggleable)
             return;
 
+        if (comp.IsUp)
+        {
+            var wearer = Transform(uid).ParentUid;
+            if (_inventorySystem.TryGetSlotEntity(wearer, "mask", out _))
+                return;
+        }
+
         SetUp(uid, comp, !comp.IsUp);
         args.Handled = true;
     }
@@ -80,6 +91,11 @@ public sealed class HelmetVisorSystem : EntitySystem
         var sound = comp.IsUp ? comp.SoundVisorUp : comp.SoundVisorDown;
         _audio.PlayPredicted(sound, uid, Transform(uid).ParentUid);
 
+        if (TryComp<SlotBlockOverrideComponent>(uid, out var over))
+        {
+            over.Overridden = comp.IsUp;
+            Dirty(uid, over);
+        }
         if (comp.ToggleActionEntity is { } action)
             _actions.SetToggled(action, comp.IsUp);
 
@@ -101,6 +117,17 @@ public sealed class HelmetVisorSystem : EntitySystem
     {
         var block = !comp.IsUp;
         RaiseLocalEvent(uid, new VisorBlockersChangedEvent(block, block));
+    }
+    private void OnExamine(EntityUid uid, HelmetVisorComponent comp, ExaminedEvent args)
+    {
+        if (!comp.IsToggleable)
+            return;
+
+        if (args.IsInDetailsRange)
+        {
+            var key = comp.IsUp ? "helmet-visor-up" : "helmet-visor-down";
+            args.PushMarkup(Loc.GetString(key));
+        }
     }
 }
 

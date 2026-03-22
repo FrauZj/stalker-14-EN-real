@@ -43,6 +43,8 @@
     - Hair
     - HeadTop
     - Snout
+  - type: SlotBlockOverride
+    tag: BlockMask
 
 - type: entity
   parent: STClothingHeadHelmetTacticalT3Base
