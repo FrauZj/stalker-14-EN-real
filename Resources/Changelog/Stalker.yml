@@ -1868,5 +1868,12 @@
   id: 196
   time: '2026-03-25T22:10:19.864732+00:00'
   url: https://github.com/coolmankid12345/stalker-14-EN/pull/688
+- author: King-spin
+  changes:
+  - message: Allows sledgehammers to be stored on back
+    type: Add
+  id: 197
+  time: '2026-03-26T12:49:26.716319+00:00'
+  url: https://github.com/coolmankid12345/stalker-14-EN/pull/714
 Name: Stalker
 Order: -1
